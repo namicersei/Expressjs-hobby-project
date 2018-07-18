@@ -1,21 +1,43 @@
 const express = require('express')
+const bodyParser = require("body-parser");
+const mongoose = require('mongoose');
+
+const Form = require('./database.js');
+
+mongoose.connect('mongodb://localhost:27017/namrata', { useNewUrlParser: true });
+
 const app = express();
 
-app.get('/hello/:name?', (req, res) => {
-    let who
-    if (req.params.name === undefined) {
-        who = "World"
-    } else {
-        who = req.params.name
-    }
-    return res.send("Hello, " + who)
-})
-// app.get('/time', (req, res) => {
-//     var d = new Date();
-//     var n = d.getTime();
-//     console.log(n);
-//     res.status(200).send(String(n))
+app.use(bodyParser.json());
+
+
+app.post('/', (req, res) => {
     
-// })
-app.listen(process.argv[2], () => console.log('Example app listening on port 3000!'))
+    const formDetails = new Form(req.body);  
+    formDetails
+    .save(function(err, formDetails) {
+    if (err) {
+    console.log(err)
+    return res.status(404)
+    }
+    else {
+    console.log(formDetails);
+    return res.send(formDetails);
+    }
+    })
+})
+
+app.get('/', (req, res) => {
+  Form
+  .find({name: "nami"})
+  .exec()
+  .then((data) => {
+    return res.send(data)
+  })
+  .catch ((err) => {
+    console.log(err);
+    return res.status(400).send(err.message);
+  })
+})
+app.listen(8000, () => console.log('Example app listening on port 3000!'))
 
