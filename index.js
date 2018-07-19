@@ -1,7 +1,10 @@
 const express = require("express")
 const bodyParser = require("body-parser")
 const mongoose = require("mongoose")
+
 const jwt = require("jsonwebtoken")
+
+const bcrypt = require("bcrypt")
 
 const Form = require("./database.js")
 const RegisterDetails = require("./registrationDetails.js")
@@ -16,9 +19,24 @@ const secretKey = "secretkey"
 // const email = "nami"
 //* ************* Registration and login***************************/
 
+// Midlle ware for hashing password
+
+const hashWare = function (req, res, next) {
+  const { password } = req.body
+  const saltRounds = 10
+  bcrypt.hash(password, saltRounds, (err, hash) => {
+    if (hash) {
+      req.body.password = hash
+      next()
+    }
+
+  })
+}
+
 // Registration
 
-app.post("/form/register", (req, res) => {
+app.post("/form/register", hashWare, (req, res) => {
+  console.log(req.body)
   const registerdetails = new RegisterDetails(req.body)
   registerdetails
     .save()
@@ -34,21 +52,26 @@ app.post("/form/login", (req, res) => {
     .findOne({ username })
     .exec()
     .then((data) => {
-      if (!data) throw new Error("No such error")
+      if (!data) throw new Error("No such user")
+
       const { password } = data
-      if (req.body.pass === password) {
-        jwt.sign({
-          email: username,
-          expiresIn: "1 h"
-        },
-        secretKey,
-        (err, token) => {
-          if (err) res.status(500).send(err.message)
-          if (token) res.send(token)
-        })
-      } else {
-        res.send("Not a valid user!") // wrong login credentials
-      }
+      bcrypt.compare(req.body.password, password).then((result) => {
+        console.log("hi")
+        if (result) {
+          jwt.sign({
+            email: username,
+            expiresIn: "1 h"
+          },
+          secretKey,
+          (err, token) => {
+            if (err) res.status(500).send(err.message)
+            if (token) res.send(token)
+          })
+        } else {
+          res.send("Not a valid user!") // wrong login credentials
+        }
+      })
+        .catch(err => console.log(err))
     })
     .catch(err => res.status(403).send(err.message))
 
